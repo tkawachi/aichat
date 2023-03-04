@@ -54,7 +54,7 @@ func ListPrompts() error {
 	if err != nil {
 		return err
 	}
-	for name, _ := range prompts {
+	for name := range prompts {
 		fmt.Println(name)
 	}
 	return nil
