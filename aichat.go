@@ -60,6 +60,24 @@ func ListPrompts() error {
 	return nil
 }
 
+func firstNonZeroInt(i ...int) int {
+	for _, v := range i {
+		if v != 0 {
+			return v
+		}
+	}
+	return 0
+}
+
+func firstNonZeroFloat32(f ...float32) float32 {
+	for _, v := range f {
+		if v != 0 {
+			return v
+		}
+	}
+	return 0
+}
+
 func main() {
 	var temperature float32 = 0.5
 	var maxTokens = 500
@@ -127,8 +145,8 @@ func main() {
 		response, err := aiChat.client.CreateChatCompletion(context.Background(), gogpt.ChatCompletionRequest{
 			Model:       gogpt.GPT3Dot5Turbo,
 			Messages:    messages,
-			Temperature: aiChat.options.temperature,
-			MaxTokens:   aiChat.options.maxTokens,
+			Temperature: firstNonZeroFloat32(prompt.Temperature, aiChat.options.temperature),
+			MaxTokens:   firstNonZeroInt(prompt.MaxTokens, aiChat.options.maxTokens),
 		})
 		if err != nil {
 			log.Fatal(err)
