@@ -1,0 +1,9 @@
+pull_request_rules:
+  - name: Automatic merge by the author
+    conditions:
+      - author=tkawachi
+      - check-success~=build
+      - check-success~=security/snyk
+    actions:
+      merge:
+        method: merge
