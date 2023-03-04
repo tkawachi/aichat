@@ -10,7 +10,7 @@ When executed, you can interact with it on the terminal.
 To exit, type Ctl-D.
 
 ```
-$ ./aichat
+$ aichat
 user: Hello!
 assistant:
 
