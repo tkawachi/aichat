@@ -17,6 +17,8 @@ type Prompt struct {
 		Role    string `yaml:"role"`
 		Content string `yaml:"content"`
 	} `yaml:"messages"`
+	Temperature float32 `yaml:"temperature"`
+	MaxTokens   int     `yaml:"max_tokens"`
 }
 
 func (p *Prompt) CreateMessages(input string) []gogpt.ChatCompletionMessage {
