@@ -108,7 +108,18 @@ func main() {
 		if prompt == nil {
 			log.Fatalf("prompt %q not found", args[0])
 		}
-		input := strings.Join(args[1:], " ")
+		var input string
+		// if it has more than one argument, use the rest as input.
+		// otherwise, read from stdin
+		if len(args) > 1 {
+			input = strings.Join(args[1:], " ")
+		} else {
+			// read all from Stdin
+			scanner := bufio.NewScanner(os.Stdin)
+			for scanner.Scan() {
+				input += scanner.Text() + "\n"
+			}
+		}
 		messages := prompt.CreateMessages(input)
 		if verbose {
 			log.Printf("messages: %+v", messages)
