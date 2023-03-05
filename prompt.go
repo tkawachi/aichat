@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 const DefaultInputMarker = "$INPUT"
 
 type Prompt struct {
+	Description string `yaml:"description"`
 	InputMarker string `yaml:"input_marker"`
 	Messages    []struct {
 		Role    string `yaml:"role"`
@@ -94,4 +96,15 @@ func ReadPrompts() (map[string]*Prompt, error) {
 	}
 	dirname := filepath.Join(home, ".aichat", "prompts")
 	return ReadPromptsInDir(dirname)
+}
+
+func ListPrompts() error {
+	prompts, err := ReadPrompts()
+	if err != nil {
+		return err
+	}
+	for name, prompt := range prompts {
+		fmt.Printf("%s\t%s\n", name, prompt.Description)
+	}
+	return nil
 }

@@ -54,17 +54,6 @@ func (aiChat *AIChat) stdChatLoop() error {
 	return scanner.Err()
 }
 
-func ListPrompts() error {
-	prompts, err := ReadPrompts()
-	if err != nil {
-		return err
-	}
-	for name := range prompts {
-		fmt.Println(name)
-	}
-	return nil
-}
-
 func firstNonZeroInt(i ...int) int {
 	for _, v := range i {
 		if v != 0 {

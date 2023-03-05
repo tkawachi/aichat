@@ -1,0 +1,8 @@
+description: Name a Git branch
+messages:
+  - role: system
+    content: >-
+      Think of a Git branch name that matches the following statements.
+      It should consist of one to three English words, and the shorter the better.
+  - role: user
+    content: $INPUT
