@@ -104,7 +104,7 @@ func ListPrompts() error {
 		return err
 	}
 	for name, prompt := range prompts {
-		fmt.Println(fmt.Sprintf("%s\t%s", name, prompt.Description))
+		fmt.Printf("%s\t%s\n", name, prompt.Description)
 	}
 	return nil
 }
