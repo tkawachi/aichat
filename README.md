@@ -11,7 +11,13 @@ a location with a PATH.
 
 ## Prerequisite
 
-You need to set the API Key in the OPENAI_API_KEY environment variable.
+You need to set the API Key in `$HOME/.aichat/credentials.yml`:
+
+```yaml
+openai_api_key: YOUR_API_KEY
+```
+
+Or set as OPENAI_API_KEY environment variable.
 
 ## How to use
 
