@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/pborman/getopt/v2"
 	gogpt "github.com/sashabaranov/go-gpt3"
@@ -24,11 +25,16 @@ type AIChat struct {
 func (aiChat *AIChat) stdChatLoop() error {
 	messages := []gogpt.ChatCompletionMessage{}
 	scanner := bufio.NewScanner(os.Stdin)
-	fmt.Print("user: ")
 	for scanner.Scan() {
+		fmt.Print("user: ")
+		input := strings.TrimSpace(scanner.Text())
+		if input == "" {
+			fmt.Println("Empty input. Exiting...")
+			return nil
+		}
 		messages = append(messages, gogpt.ChatCompletionMessage{
 			Role:    gogpt.ChatMessageRoleUser,
-			Content: scanner.Text(),
+			Content: input,
 		})
 		response, err := aiChat.client.CreateChatCompletion(context.Background(), gogpt.ChatCompletionRequest{
 			Model:       gogpt.GPT3Dot5Turbo,
@@ -43,7 +49,6 @@ func (aiChat *AIChat) stdChatLoop() error {
 			return fmt.Errorf("no choices")
 		}
 		fmt.Println("assistant: " + response.Choices[0].Message.Content)
-		fmt.Print("user: ")
 	}
 	return scanner.Err()
 }
