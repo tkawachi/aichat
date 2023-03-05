@@ -66,3 +66,5 @@ Applications where aichat may be of use
 - Text summarization
 - Generating git commit messages
 - Code review
+
+@tkawachi が試している日本語のプロンプト例が https://github.com/tkawachi/my-aichat-prompts にあるので参考までにどうぞ。
