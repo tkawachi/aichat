@@ -25,8 +25,8 @@ type AIChat struct {
 func (aiChat *AIChat) stdChatLoop() error {
 	messages := []gogpt.ChatCompletionMessage{}
 	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Print("user: ")
 	for scanner.Scan() {
-		fmt.Print("user: ")
 		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
 			fmt.Println("Empty input. Exiting...")
@@ -49,6 +49,7 @@ func (aiChat *AIChat) stdChatLoop() error {
 			return fmt.Errorf("no choices")
 		}
 		fmt.Println("assistant: " + response.Choices[0].Message.Content)
+		fmt.Print("user: ")
 	}
 	return scanner.Err()
 }
