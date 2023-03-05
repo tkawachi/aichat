@@ -70,6 +70,10 @@ func ReadPromptsInDir(dirname string) (map[string]*Prompt, error) {
 		if file.IsDir() {
 			continue
 		}
+		// skip non-yaml files
+		if !strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml") {
+			continue
+		}
 		prompt, err := NewPromptFromFile(dirname + "/" + file.Name())
 		if err != nil {
 			return nil, err
