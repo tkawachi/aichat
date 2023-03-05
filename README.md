@@ -4,7 +4,16 @@
 
 This is a program to use OpenAI's ChatAPI from the command line.
 
+## Install
+
+Download the latest version from Releases and place the executable in
+a location with a PATH.
+
+## Prerequisite
+
 You need to set the API Key in the OPENAI_API_KEY environment variable.
+
+## How to use
 
 When executed, you can interact with it on the terminal.
 To exit, type Ctl-D.
@@ -31,6 +40,8 @@ messages:
     content: A brief description of the program, using only lowercase letters and hyphens, appropriate for the program. You may use up to three hyphens.
   - role: user
     content: $INPUT
+# creativety or randomness, 0~1
+temperature: 0.7
 ```
 
 Command line input is embedded in `$INPUT` and sent to the API.
@@ -41,3 +52,11 @@ To use the prompt above, do the following
 $ aichat foo Command line program to utilize AI
 ai-utilization-cli
 ```
+
+## Ideas
+
+Applications where aichat may be of use
+
+- Text summarization
+- Generating git commit messages
+- Code review
