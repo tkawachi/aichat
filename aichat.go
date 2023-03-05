@@ -101,9 +101,9 @@ func main() {
 		return
 	}
 
-	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
-	if openaiAPIKey == "" {
-		log.Fatal("OPENAI_API_KEY is not set")
+	openaiAPIKey, err := ReadOpenAIAPIKey()
+	if err != nil {
+		log.Fatal(err)
 	}
 	options := chatOptions{
 		temperature: temperature,
