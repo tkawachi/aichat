@@ -41,6 +41,9 @@ func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest,
 		if err != nil {
 			return fmt.Errorf("stream recv: %w", err)
 		}
+		if len(response.Choices) == 0 {
+			return fmt.Errorf("no choices returned")
+		}
 		_, err = fmt.Fprint(out, response.Choices[0].Delta.Content)
 		if err != nil {
 			return err
