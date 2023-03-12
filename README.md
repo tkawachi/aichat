@@ -38,7 +38,8 @@ As an AI language model, I can say that AI has the potential to transform virtua
 ```
 
 Also, you can use `aichat foo` command by putting the prompt template as `$HOME/.aichat/prompts/foo.yml`. You can replace the `foo` part with any name you like.
-The contents of `foo.yml` should look like this
+
+For example, place the following content as `$HOME/.aichat/prompts/name-program.yml`:
 
 ```yaml
 messages:
@@ -55,9 +56,11 @@ Command line input is embedded in `$INPUT` and sent to the API.
 To use the prompt above, do the following
 
 ```
-$ aichat foo Command line program to utilize AI
+$ echo "Command line program to utilize AI" | aichat name-program
 ai-utilization-cli
 ```
+
+Yay. I could easily create a command that would bring out the power of the AI!
 
 ## Ideas
 
@@ -67,4 +70,4 @@ Applications where aichat may be of use
 - Generating git commit messages
 - Code review
 
-@tkawachi が試している日本語のプロンプト例が https://github.com/tkawachi/my-aichat-prompts にあるので参考までにどうぞ。
+@tkawachi が試している日本語のプロンプト例が <https://github.com/tkawachi/my-aichat-prompts> にあるので参考までにどうぞ。
