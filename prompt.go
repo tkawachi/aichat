@@ -13,16 +13,25 @@ import (
 )
 
 const DefaultInputMarker = "$INPUT"
+const DefaultOutputMarker = "$OUTPUT"
+
+type Message struct {
+	Role    string `yaml:"role"`
+	Content string `yaml:"content"`
+}
 
 type Prompt struct {
-	Description string `yaml:"description"`
-	InputMarker string `yaml:"input_marker"`
-	Messages    []struct {
-		Role    string `yaml:"role"`
-		Content string `yaml:"content"`
-	} `yaml:"messages"`
-	Temperature float32 `yaml:"temperature"`
-	MaxTokens   int     `yaml:"max_tokens"`
+	Description        string    `yaml:"description"`
+	InputMarker        string    `yaml:"input_marker"`
+	OutputMarker       string    `yaml:"output_marker"`
+	Messages           []Message `yaml:"messages"`
+	SubsequentMessages []Message `yaml:"subsequent_messages"`
+	Temperature        float32   `yaml:"temperature"`
+	MaxTokens          int       `yaml:"max_tokens"`
+}
+
+func (p *Prompt) isFoldEnabled() bool {
+	return len(p.SubsequentMessages) > 0
 }
 
 func (p *Prompt) CreateMessages(input string) []gogpt.ChatCompletionMessage {
@@ -39,14 +48,34 @@ func (p *Prompt) CreateMessages(input string) []gogpt.ChatCompletionMessage {
 	return messages
 }
 
-// CountTokens counts the number of tokens in the prompt
-func (p *Prompt) CountTokens() (int, error) {
-	count := 0
-	encoder, err := tokenizer.NewEncoder()
-	if err != nil {
-		return 0, err
+func (p *Prompt) CreateSubsequentMessages(output, input string) []gogpt.ChatCompletionMessage {
+	messages := []gogpt.ChatCompletionMessage{}
+	for _, message := range p.SubsequentMessages {
+		// replace input marker with input
+		content := strings.ReplaceAll(message.Content, p.InputMarker, input)
+		// replace output marker with output
+		content = strings.ReplaceAll(content, p.OutputMarker, output)
+
+		messages = append(messages, gogpt.ChatCompletionMessage{
+			Role:    message.Role,
+			Content: content,
+		})
 	}
-	for _, message := range p.Messages {
+	return messages
+}
+
+// CountTokens counts the number of tokens in the prompt
+func (p *Prompt) CountTokens(encoder *tokenizer.Encoder) (int, error) {
+	return countMessagesTokens(encoder, p.Messages)
+}
+
+func (p *Prompt) CountSubsequentTokens(encoder *tokenizer.Encoder) (int, error) {
+	return countMessagesTokens(encoder, p.SubsequentMessages)
+}
+
+func countMessagesTokens(encoder *tokenizer.Encoder, messages []Message) (int, error) {
+	count := 0
+	for _, message := range messages {
 		// Encode string with GPT tokenizer
 		encoded, err := encoder.Encode(message.Content)
 		if err != nil {
@@ -58,8 +87,8 @@ func (p *Prompt) CountTokens() (int, error) {
 }
 
 // AllowedInputTokens returns the number of tokens allowed for the input
-func (p *Prompt) AllowedInputTokens(maxTokensOverride int, verbose bool) (int, error) {
-	promptTokens, err := p.CountTokens()
+func (p *Prompt) AllowedInputTokens(encoder *tokenizer.Encoder, maxTokensOverride int, verbose bool) (int, error) {
+	promptTokens, err := p.CountTokens(encoder)
 	if err != nil {
 		return 0, err
 	}
@@ -71,6 +100,23 @@ func (p *Prompt) AllowedInputTokens(maxTokensOverride int, verbose bool) (int, e
 	}
 	if result <= 0 {
 		return 0, fmt.Errorf("allowed tokens for input is %d, but it should be greater than 0", result)
+	}
+	return result, nil
+}
+
+func (p *Prompt) AllowedSubsequentInputTokens(encoder *tokenizer.Encoder, outputLen, maxTokensOverride int, verbose bool) (int, error) {
+	promptTokens, err := p.CountSubsequentTokens(encoder)
+	if err != nil {
+		return 0, err
+	}
+	// reserve 500 tokens for output if maxTokens is not specified
+	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens, 500)
+	result := 4096 - (promptTokens + maxTokens + outputLen)
+	if verbose {
+		log.Printf("allowed tokens for subsequent input is %d", result)
+	}
+	if result <= 0 {
+		return 0, fmt.Errorf("allowed tokens for subsequent input is %d, but it should be greater than 0", result)
 	}
 	return result, nil
 }
@@ -99,8 +145,8 @@ func splitStringWithTokensLimit(s string, tokensLimit int) ([]string, error) {
 	return parts, nil
 }
 
-func (p *Prompt) CreateMessagesWithSplit(input string, maxTokensOverride int, verbose bool) ([][]gogpt.ChatCompletionMessage, error) {
-	allowedInputTokens, err := p.AllowedInputTokens(maxTokensOverride, verbose)
+func (p *Prompt) CreateMessagesWithSplit(encoder *tokenizer.Encoder, input string, maxTokensOverride int, verbose bool) ([][]gogpt.ChatCompletionMessage, error) {
+	allowedInputTokens, err := p.AllowedInputTokens(encoder, maxTokensOverride, verbose)
 	if err != nil {
 		return nil, err
 	}
@@ -122,6 +168,9 @@ func NewPromptFromFile(filename string) (*Prompt, error) {
 	}
 	if prompt.InputMarker == "" {
 		prompt.InputMarker = DefaultInputMarker
+	}
+	if prompt.OutputMarker == "" {
+		prompt.OutputMarker = DefaultOutputMarker
 	}
 	return prompt, nil
 }

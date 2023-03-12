@@ -1,0 +1,17 @@
+description: Summarize
+messages:
+  - role: system
+    content: >-
+      Summarize the following text in one sentence.
+  - role: user
+    content: $INPUT
+
+subsequent_messages:
+  - role: system
+    content: >-
+      Summarize the following text in one sentence.
+
+      Here is the summary you wrote previously:
+      $OUTPUT
+  - role: user
+    content: $INPUT
