@@ -134,8 +134,12 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 	if err != nil {
 		return err
 	}
+	idx := firstAllowedTokens
+	for idx > len(encoded) {
+		idx = len(encoded)
+	}
 
-	firstEncoded := encoded[:firstAllowedTokens]
+	firstEncoded := encoded[:idx]
 	firstInput := aiChat.encoder.Decode(firstEncoded)
 	temperature := firstNonZeroFloat32(aiChat.options.temperature, prompt.Temperature)
 	firstRequest := gogpt.ChatCompletionRequest{
@@ -154,7 +158,7 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 		return fmt.Errorf("no choices returned")
 	}
 	output := response.Choices[0].Message.Content
-	if firstAllowedTokens >= len(encoded) {
+	if idx >= len(encoded) {
 		fmt.Println(output)
 		return nil
 	}
@@ -162,7 +166,6 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 		log.Printf("first output: %s", output)
 	}
 
-	idx := firstAllowedTokens
 	for idx < len(encoded) {
 		outputTokens, err := aiChat.encoder.Encode(output)
 		if err != nil {
