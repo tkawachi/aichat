@@ -57,13 +57,16 @@ func (p *Prompt) CountTokens() (int, error) {
 }
 
 // AllowedInputTokens returns the number of tokens allowed for the input
-func (p *Prompt) AllowedInputTokens(maxTokensOverride int) (int, error) {
-	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens)
+func (p *Prompt) AllowedInputTokens() (int, error) {
 	promptTokens, err := p.CountTokens()
 	if err != nil {
 		return 0, err
 	}
-	return maxTokens - promptTokens, nil
+	result := 4096 - (promptTokens + p.MaxTokens)
+	if result <= 0 {
+		return 0, fmt.Errorf("allowed tokens for input is %d, but it should be greater than 0", result)
+	}
+	return result, nil
 }
 
 func splitStringWithTokensLimit(s string, tokensLimit int) ([]string, error) {
@@ -91,12 +94,10 @@ func splitStringWithTokensLimit(s string, tokensLimit int) ([]string, error) {
 }
 
 func (p *Prompt) CreateMessagesWithSplit(input string, maxTokensOverride int) ([][]gogpt.ChatCompletionMessage, error) {
-	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens)
-	promptTokens, err := p.CountTokens()
+	allowedInputTokens, err := p.AllowedInputTokens()
 	if err != nil {
 		return nil, err
 	}
-	allowedInputTokens := maxTokens - promptTokens
 	inputParts, err := splitStringWithTokensLimit(input, allowedInputTokens)
 	if err != nil {
 		return nil, err

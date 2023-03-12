@@ -194,9 +194,9 @@ func main() {
 			messagesSlice = [][]gogpt.ChatCompletionMessage{messages}
 		}
 
-		for _, messages := range messagesSlice {
+		maxTokens := firstNonZeroInt(prompt.MaxTokens, aiChat.options.maxTokens)
 
-			maxTokens := firstNonZeroInt(prompt.MaxTokens, aiChat.options.maxTokens)
+		for _, messages := range messagesSlice {
 
 			request := gogpt.ChatCompletionRequest{
 				Model:       gogpt.GPT3Dot5Turbo,
@@ -209,7 +209,10 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if cnt > 4096 {
+			if verbose {
+				log.Printf("total tokens %d", cnt)
+			}
+			if cnt+maxTokens > 4096 {
 				log.Fatalf("total tokens %d exceeds 4096", cnt)
 			}
 
