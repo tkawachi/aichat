@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/pborman/getopt/v2"
+	tokenizer "github.com/samber/go-gpt-3-encoder"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
@@ -179,6 +180,13 @@ func main() {
 		if verbose {
 			log.Printf("messages: %+v", messages)
 		}
+		cnt, err := CountTokens(mapSlice(messages, func(m gogpt.ChatCompletionMessage) string { return m.Content }))
+		if err != nil {
+			log.Fatal(err)
+		}
+		if cnt > 4096 {
+			log.Fatalf("total tokens %d exceeds 4096", cnt)
+		}
 		request := gogpt.ChatCompletionRequest{
 			Model:       gogpt.GPT3Dot5Turbo,
 			Messages:    messages,
@@ -195,4 +203,31 @@ func main() {
 		}
 	}
 
+}
+
+// mapSlice maps a slice of type T to a slice of type M using the function f.
+func mapSlice[T any, M any](a []T, f func(T) M) []M {
+	r := make([]M, len(a))
+	for i, v := range a {
+		r[i] = f(v)
+	}
+	return r
+}
+
+// CountTokens returns the number of tokens in the messages.
+func CountTokens(messages []string) (int, error) {
+	count := 0
+	encoder, err := tokenizer.NewEncoder()
+	if err != nil {
+		return 0, err
+	}
+	for _, message := range messages {
+		// Encode string with GPT tokenizer
+		encoded, err := encoder.Encode(message)
+		if err != nil {
+			return 0, err
+		}
+		count += len(encoded)
+	}
+	return count, nil
 }
