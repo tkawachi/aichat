@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	tokenizer "github.com/samber/go-gpt-3-encoder"
 	gogpt "github.com/sashabaranov/go-gpt3"
 	"gopkg.in/yaml.v3"
 )
@@ -35,6 +36,76 @@ func (p *Prompt) CreateMessages(input string) []gogpt.ChatCompletionMessage {
 		})
 	}
 	return messages
+}
+
+// CountTokens counts the number of tokens in the prompt
+func (p *Prompt) CountTokens() (int, error) {
+	count := 0
+	encoder, err := tokenizer.NewEncoder()
+	if err != nil {
+		return 0, err
+	}
+	for _, message := range p.Messages {
+		// Encode string with GPT tokenizer
+		encoded, err := encoder.Encode(message.Content)
+		if err != nil {
+			return 0, err
+		}
+		count += len(encoded)
+	}
+	return count, nil
+}
+
+// AllowedInputTokens returns the number of tokens allowed for the input
+func (p *Prompt) AllowedInputTokens(maxTokensOverride int) (int, error) {
+	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens)
+	promptTokens, err := p.CountTokens()
+	if err != nil {
+		return 0, err
+	}
+	return maxTokens - promptTokens, nil
+}
+
+func splitStringWithTokensLimit(s string, tokensLimit int) ([]string, error) {
+	encoder, err := tokenizer.NewEncoder()
+	if err != nil {
+		return nil, err
+	}
+	encoded, err := encoder.Encode(s)
+	if err != nil {
+		return nil, err
+	}
+	var parts []string
+	for {
+		if len(encoded) == 0 {
+			break
+		}
+		if len(encoded) <= tokensLimit {
+			parts = append(parts, encoder.Decode(encoded))
+			break
+		}
+		parts = append(parts, encoder.Decode(encoded[:tokensLimit]))
+		encoded = encoded[tokensLimit:]
+	}
+	return parts, nil
+}
+
+func (p *Prompt) CreateMessagesWithSplit(input string, maxTokensOverride int) ([][]gogpt.ChatCompletionMessage, error) {
+	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens)
+	promptTokens, err := p.CountTokens()
+	if err != nil {
+		return nil, err
+	}
+	allowedInputTokens := maxTokens - promptTokens
+	inputParts, err := splitStringWithTokensLimit(input, allowedInputTokens)
+	if err != nil {
+		return nil, err
+	}
+	messages := [][]gogpt.ChatCompletionMessage{}
+	for _, inputPart := range inputParts {
+		messages = append(messages, p.CreateMessages(inputPart))
+	}
+	return messages, nil
 }
 
 func NewPromptFromFile(filename string) (*Prompt, error) {
