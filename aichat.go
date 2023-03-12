@@ -125,11 +125,13 @@ func main() {
 	var verbose = false
 	var listPrompts = false
 	var nonStreaming = false
+	var split = false
 	getopt.FlagLong(&temperature, "temperature", 't', "temperature")
 	getopt.FlagLong(&maxTokens, "max-tokens", 'm', "max tokens")
 	getopt.FlagLong(&verbose, "verbose", 'v', "verbose output")
 	getopt.FlagLong(&listPrompts, "list-prompts", 'l', "list prompts")
 	getopt.FlagLong(&nonStreaming, "non-streaming", 0, "non streaming mode")
+	getopt.FlagLong(&split, "split", 0, "split input")
 	getopt.Parse()
 
 	if listPrompts {
@@ -171,38 +173,65 @@ func main() {
 			log.Fatalf("prompt %q not found", args[0])
 		}
 		// read all from Stdin
-		scanner := bufio.NewScanner(os.Stdin)
-		input := ""
-		for scanner.Scan() {
-			input += scanner.Text() + "\n"
-		}
-		messages := prompt.CreateMessages(input)
-		if verbose {
-			log.Printf("messages: %+v", messages)
-		}
-		cnt, err := CountTokens(mapSlice(messages, func(m gogpt.ChatCompletionMessage) string { return m.Content }))
-		if err != nil {
-			log.Fatal(err)
-		}
-		if cnt > 4096 {
-			log.Fatalf("total tokens %d exceeds 4096", cnt)
-		}
-		request := gogpt.ChatCompletionRequest{
-			Model:       gogpt.GPT3Dot5Turbo,
-			Messages:    messages,
-			Temperature: firstNonZeroFloat32(prompt.Temperature, aiChat.options.temperature),
-			MaxTokens:   firstNonZeroInt(prompt.MaxTokens, aiChat.options.maxTokens),
-		}
-		if aiChat.options.nonStreaming {
-			err = nonStreamCompletion(aiChat.client, request, os.Stdout)
+		input := scanAll(bufio.NewScanner(os.Stdin))
+
+		var messagesSlice [][]gogpt.ChatCompletionMessage
+
+		if split {
+			messagesSlice, err = prompt.CreateMessagesWithSplit(input, 0) // TODO pass maxTokens if it is specified via command line flag
+			if err != nil {
+				log.Fatal(err)
+			}
+			if verbose {
+				log.Printf("messages was split to %d parts", len(messagesSlice))
+
+			}
 		} else {
-			err = streamCompletion(aiChat.client, request, os.Stdout)
+			messages := prompt.CreateMessages(input)
+			if verbose {
+				log.Printf("messages: %+v", messagesSlice)
+			}
+			messagesSlice = [][]gogpt.ChatCompletionMessage{messages}
 		}
-		if err != nil {
-			log.Fatal(err)
+
+		for _, messages := range messagesSlice {
+
+			maxTokens := firstNonZeroInt(prompt.MaxTokens, aiChat.options.maxTokens)
+
+			request := gogpt.ChatCompletionRequest{
+				Model:       gogpt.GPT3Dot5Turbo,
+				Messages:    messages,
+				Temperature: firstNonZeroFloat32(prompt.Temperature, aiChat.options.temperature),
+				MaxTokens:   maxTokens,
+			}
+
+			cnt, err := CountTokens(mapSlice(messages, func(m gogpt.ChatCompletionMessage) string { return m.Content }))
+			if err != nil {
+				log.Fatal(err)
+			}
+			if cnt > 4096 {
+				log.Fatalf("total tokens %d exceeds 4096", cnt)
+			}
+
+			if aiChat.options.nonStreaming {
+				err = nonStreamCompletion(aiChat.client, request, os.Stdout)
+			} else {
+				err = streamCompletion(aiChat.client, request, os.Stdout)
+			}
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 
+}
+
+func scanAll(scanner *bufio.Scanner) string {
+	input := ""
+	for scanner.Scan() {
+		input += scanner.Text() + "\n"
+	}
+	return input
 }
 
 // mapSlice maps a slice of type T to a slice of type M using the function f.
