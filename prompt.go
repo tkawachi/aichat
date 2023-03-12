@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,12 +58,17 @@ func (p *Prompt) CountTokens() (int, error) {
 }
 
 // AllowedInputTokens returns the number of tokens allowed for the input
-func (p *Prompt) AllowedInputTokens() (int, error) {
+func (p *Prompt) AllowedInputTokens(maxTokensOverride int, verbose bool) (int, error) {
 	promptTokens, err := p.CountTokens()
 	if err != nil {
 		return 0, err
 	}
-	result := 4096 - (promptTokens + p.MaxTokens)
+	// reserve 500 tokens for output if maxTokens is not specified
+	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens, 500)
+	result := 4096 - (promptTokens + maxTokens)
+	if verbose {
+		log.Printf("allowed tokens for input is %d", result)
+	}
 	if result <= 0 {
 		return 0, fmt.Errorf("allowed tokens for input is %d, but it should be greater than 0", result)
 	}
@@ -93,8 +99,8 @@ func splitStringWithTokensLimit(s string, tokensLimit int) ([]string, error) {
 	return parts, nil
 }
 
-func (p *Prompt) CreateMessagesWithSplit(input string, maxTokensOverride int) ([][]gogpt.ChatCompletionMessage, error) {
-	allowedInputTokens, err := p.AllowedInputTokens()
+func (p *Prompt) CreateMessagesWithSplit(input string, maxTokensOverride int, verbose bool) ([][]gogpt.ChatCompletionMessage, error) {
+	allowedInputTokens, err := p.AllowedInputTokens(maxTokensOverride, verbose)
 	if err != nil {
 		return nil, err
 	}

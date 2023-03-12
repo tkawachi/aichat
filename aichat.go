@@ -19,6 +19,7 @@ type chatOptions struct {
 	temperature  float32
 	maxTokens    int
 	nonStreaming bool
+	verbose      bool
 }
 
 type AIChat struct {
@@ -27,7 +28,7 @@ type AIChat struct {
 }
 
 // stramCompletion print out the chat completion in streaming mode.
-func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest, out io.Writer) error {
+func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest, out io.Writer, verbose bool) error {
 	stream, err := client.CreateChatCompletionStream(context.Background(), request)
 	if err != nil {
 		return err
@@ -43,7 +44,10 @@ func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest,
 			return fmt.Errorf("stream recv: %w", err)
 		}
 		if len(response.Choices) == 0 {
-			return fmt.Errorf("no choices returned")
+			if verbose {
+				log.Println("no choices returned")
+			}
+			continue
 		}
 		_, err = fmt.Fprint(out, response.Choices[0].Delta.Content)
 		if err != nil {
@@ -91,7 +95,7 @@ func (aiChat *AIChat) stdChatLoop() error {
 		if aiChat.options.nonStreaming {
 			err = nonStreamCompletion(aiChat.client, request, os.Stdout)
 		} else {
-			err = streamCompletion(aiChat.client, request, os.Stdout)
+			err = streamCompletion(aiChat.client, request, os.Stdout, aiChat.options.verbose)
 		}
 		if err != nil {
 			return err
@@ -121,13 +125,13 @@ func firstNonZeroFloat32(f ...float32) float32 {
 
 func main() {
 	var temperature float32 = 0.5
-	var maxTokens = 500
+	var maxTokens = 0
 	var verbose = false
 	var listPrompts = false
 	var nonStreaming = false
 	var split = false
 	getopt.FlagLong(&temperature, "temperature", 't', "temperature")
-	getopt.FlagLong(&maxTokens, "max-tokens", 'm', "max tokens")
+	getopt.FlagLong(&maxTokens, "max-tokens", 'm', "max tokens, 0 to use default")
 	getopt.FlagLong(&verbose, "verbose", 'v', "verbose output")
 	getopt.FlagLong(&listPrompts, "list-prompts", 'l', "list prompts")
 	getopt.FlagLong(&nonStreaming, "non-streaming", 0, "non streaming mode")
@@ -149,6 +153,7 @@ func main() {
 		temperature:  temperature,
 		maxTokens:    maxTokens,
 		nonStreaming: nonStreaming,
+		verbose:      verbose,
 	}
 	if verbose {
 		log.Printf("options: %+v", options)
@@ -178,7 +183,7 @@ func main() {
 		var messagesSlice [][]gogpt.ChatCompletionMessage
 
 		if split {
-			messagesSlice, err = prompt.CreateMessagesWithSplit(input, 0) // TODO pass maxTokens if it is specified via command line flag
+			messagesSlice, err = prompt.CreateMessagesWithSplit(input, aiChat.options.maxTokens, aiChat.options.verbose)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -194,7 +199,10 @@ func main() {
 			messagesSlice = [][]gogpt.ChatCompletionMessage{messages}
 		}
 
-		maxTokens := firstNonZeroInt(prompt.MaxTokens, aiChat.options.maxTokens)
+		maxTokens := firstNonZeroInt(aiChat.options.maxTokens, prompt.MaxTokens)
+		if verbose {
+			log.Printf("max tokens: %d", maxTokens)
+		}
 
 		for _, messages := range messagesSlice {
 
@@ -219,7 +227,7 @@ func main() {
 			if aiChat.options.nonStreaming {
 				err = nonStreamCompletion(aiChat.client, request, os.Stdout)
 			} else {
-				err = streamCompletion(aiChat.client, request, os.Stdout)
+				err = streamCompletion(aiChat.client, request, os.Stdout, aiChat.options.verbose)
 			}
 			if err != nil {
 				log.Fatal(err)
