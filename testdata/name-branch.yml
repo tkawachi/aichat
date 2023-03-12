@@ -6,3 +6,5 @@ messages:
       It should consist of one to three English words, and the shorter the better.
   - role: user
     content: $INPUT
+
+temperature: 0.5

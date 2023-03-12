@@ -24,6 +24,7 @@ type chatOptions struct {
 
 type AIChat struct {
 	client  *gogpt.Client
+	encoder *tokenizer.Encoder
 	options chatOptions
 }
 
@@ -123,6 +124,86 @@ func firstNonZeroFloat32(f ...float32) float32 {
 	return 0
 }
 
+func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
+	encoded, err := aiChat.encoder.Encode(input)
+	if err != nil {
+		return fmt.Errorf("encode: %w", err)
+	}
+
+	firstAllowedTokens, err := prompt.AllowedInputTokens(aiChat.encoder, aiChat.options.maxTokens, aiChat.options.verbose)
+	if err != nil {
+		return err
+	}
+
+	firstEncoded := encoded[:firstAllowedTokens]
+	firstInput := aiChat.encoder.Decode(firstEncoded)
+	temperature := firstNonZeroFloat32(aiChat.options.temperature, prompt.Temperature)
+	firstRequest := gogpt.ChatCompletionRequest{
+		Model:       gogpt.GPT3Dot5Turbo,
+		Messages:    prompt.CreateMessages(firstInput),
+		Temperature: temperature,
+	}
+	if aiChat.options.verbose {
+		log.Printf("first request: %+v", firstRequest)
+	}
+	response, err := aiChat.client.CreateChatCompletion(context.Background(), firstRequest)
+	if err != nil {
+		return fmt.Errorf("create chat completion: %w", err)
+	}
+	if len(response.Choices) == 0 {
+		return fmt.Errorf("no choices returned")
+	}
+	output := response.Choices[0].Message.Content
+	if firstAllowedTokens >= len(encoded) {
+		fmt.Println(output)
+		return nil
+	}
+	if aiChat.options.verbose {
+		log.Printf("first output: %s", output)
+	}
+
+	idx := firstAllowedTokens
+	for idx < len(encoded) {
+		outputTokens, err := aiChat.encoder.Encode(output)
+		if err != nil {
+			return fmt.Errorf("encode: %w", err)
+		}
+
+		allowedTokens, err := prompt.AllowedSubsequentInputTokens(
+			aiChat.encoder, len(outputTokens), aiChat.options.maxTokens, aiChat.options.verbose)
+		if err != nil {
+			return fmt.Errorf("allowed subsequent input tokens: %w", err)
+		}
+		nextIdx := idx + allowedTokens
+		if nextIdx > len(encoded) {
+			nextIdx = len(encoded)
+		}
+		input := aiChat.encoder.Decode(encoded[idx:nextIdx])
+		request := gogpt.ChatCompletionRequest{
+			Model:       gogpt.GPT3Dot5Turbo,
+			Messages:    prompt.CreateSubsequentMessages(output, input),
+			Temperature: temperature,
+		}
+		if aiChat.options.verbose {
+			log.Printf("subsequent request: %+v", request)
+		}
+		response, err := aiChat.client.CreateChatCompletion(context.Background(), request)
+		if err != nil {
+			return fmt.Errorf("create chat completion: %w", err)
+		}
+		if len(response.Choices) == 0 {
+			return fmt.Errorf("no choices returned")
+		}
+		output = response.Choices[0].Message.Content
+		if aiChat.options.verbose {
+			log.Printf("subsequent output: %s", output)
+		}
+		idx = nextIdx
+	}
+	fmt.Println(output)
+	return nil
+}
+
 func main() {
 	var temperature float32 = 0.5
 	var maxTokens = 0
@@ -158,8 +239,13 @@ func main() {
 	if verbose {
 		log.Printf("options: %+v", options)
 	}
+	encoder, err := tokenizer.NewEncoder()
+	if err != nil {
+		log.Fatal(err)
+	}
 	aiChat := AIChat{
 		client:  gogpt.NewClient(openaiAPIKey),
+		encoder: encoder,
 		options: options,
 	}
 
@@ -180,10 +266,17 @@ func main() {
 		// read all from Stdin
 		input := scanAll(bufio.NewScanner(os.Stdin))
 
+		if prompt.isFoldEnabled() {
+			if err := aiChat.fold(prompt, input); err != nil {
+				log.Fatal(err)
+			}
+			return
+		}
+
 		var messagesSlice [][]gogpt.ChatCompletionMessage
 
 		if split {
-			messagesSlice, err = prompt.CreateMessagesWithSplit(input, aiChat.options.maxTokens, aiChat.options.verbose)
+			messagesSlice, err = prompt.CreateMessagesWithSplit(aiChat.encoder, input, aiChat.options.maxTokens, aiChat.options.verbose)
 			if err != nil {
 				log.Fatal(err)
 			}
