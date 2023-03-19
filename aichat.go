@@ -12,7 +12,7 @@ import (
 
 	"github.com/pborman/getopt/v2"
 	tokenizer "github.com/samber/go-gpt-3-encoder"
-	gogpt "github.com/sashabaranov/go-gpt3"
+	gogpt "github.com/sashabaranov/go-openai"
 )
 
 type chatOptions struct {

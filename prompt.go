@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	tokenizer "github.com/samber/go-gpt-3-encoder"
-	gogpt "github.com/sashabaranov/go-gpt3"
+	gogpt "github.com/sashabaranov/go-openai"
 	"gopkg.in/yaml.v3"
 )
 
