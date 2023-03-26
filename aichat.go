@@ -131,7 +131,8 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 		return fmt.Errorf("encode: %w", err)
 	}
 
-	firstAllowedTokens, err := prompt.AllowedInputTokens(aiChat.encoder, aiChat.options.maxTokens, aiChat.options.verbose)
+	tokenLimit := tokenLimitOfModel(aiChat.options.model)
+	firstAllowedTokens, err := prompt.AllowedInputTokens(aiChat.encoder, tokenLimit, aiChat.options.maxTokens, aiChat.options.verbose)
 	if err != nil {
 		return err
 	}
@@ -174,7 +175,7 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 		}
 
 		allowedTokens, err := prompt.AllowedSubsequentInputTokens(
-			aiChat.encoder, len(outputTokens), aiChat.options.maxTokens, aiChat.options.verbose)
+			aiChat.encoder, len(outputTokens), tokenLimit, aiChat.options.maxTokens, aiChat.options.verbose)
 		if err != nil {
 			return fmt.Errorf("allowed subsequent input tokens: %w", err)
 		}
@@ -208,6 +209,18 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 	return nil
 }
 
+// tokenLimitOfModel returns the maximum number of tokens allowed for a given model.
+func tokenLimitOfModel(model string) int {
+	switch model {
+	case gogpt.GPT4, gogpt.GPT40314:
+		return 8 * 1024
+	case gogpt.GPT432K, gogpt.GPT432K0314:
+		return 32 * 1024
+	default:
+		return 4 * 1024
+	}
+}
+
 func main() {
 	var temperature float32 = 0.5
 	var maxTokens = 0
@@ -215,7 +228,7 @@ func main() {
 	var listPrompts = false
 	var nonStreaming = false
 	var split = false
-	var model = gogpt.GPT3Dot5Turbo
+	var model = gogpt.GPT4
 	getopt.FlagLong(&temperature, "temperature", 't', "temperature")
 	getopt.FlagLong(&maxTokens, "max-tokens", 'm', "max tokens, 0 to use default")
 	getopt.FlagLong(&verbose, "verbose", 'v', "verbose output")
@@ -281,9 +294,10 @@ func main() {
 		}
 
 		var messagesSlice [][]gogpt.ChatCompletionMessage
+		tokenLimit := tokenLimitOfModel(aiChat.options.model)
 
 		if split {
-			messagesSlice, err = prompt.CreateMessagesWithSplit(aiChat.encoder, input, aiChat.options.maxTokens, aiChat.options.verbose)
+			messagesSlice, err = prompt.CreateMessagesWithSplit(aiChat.encoder, input, tokenLimit, aiChat.options.maxTokens, aiChat.options.verbose)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -320,8 +334,8 @@ func main() {
 			if verbose {
 				log.Printf("total tokens %d", cnt)
 			}
-			if cnt+maxTokens > 4096 {
-				log.Fatalf("total tokens %d exceeds 4096", cnt)
+			if cnt+maxTokens > tokenLimit {
+				log.Fatalf("total tokens %d exceeds %d", cnt, tokenLimit)
 			}
 
 			if aiChat.options.nonStreaming {
