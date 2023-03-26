@@ -230,12 +230,12 @@ func main() {
 	var split = false
 	var model = gogpt.GPT4
 	getopt.FlagLong(&temperature, "temperature", 't', "temperature")
-	getopt.FlagLong(&maxTokens, "max-tokens", 'm', "max tokens, 0 to use default")
+	getopt.FlagLong(&maxTokens, "max-tokens", 0, "max tokens, 0 to use default")
 	getopt.FlagLong(&verbose, "verbose", 'v', "verbose output")
 	getopt.FlagLong(&listPrompts, "list-prompts", 'l', "list prompts")
 	getopt.FlagLong(&nonStreaming, "non-streaming", 0, "non streaming mode")
 	getopt.FlagLong(&split, "split", 0, "split input")
-	getopt.FlagLong(&model, "model", 0, "model")
+	getopt.FlagLong(&model, "model", 'm', "model")
 	getopt.Parse()
 
 	if listPrompts {
