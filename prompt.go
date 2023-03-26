@@ -87,14 +87,14 @@ func countMessagesTokens(encoder *tokenizer.Encoder, messages []Message) (int, e
 }
 
 // AllowedInputTokens returns the number of tokens allowed for the input
-func (p *Prompt) AllowedInputTokens(encoder *tokenizer.Encoder, maxTokensOverride int, verbose bool) (int, error) {
+func (p *Prompt) AllowedInputTokens(encoder *tokenizer.Encoder, tokenLimit, maxTokensOverride int, verbose bool) (int, error) {
 	promptTokens, err := p.CountTokens(encoder)
 	if err != nil {
 		return 0, err
 	}
 	// reserve 500 tokens for output if maxTokens is not specified
 	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens, 500)
-	result := 4096 - (promptTokens + maxTokens)
+	result := tokenLimit - (promptTokens + maxTokens)
 	if verbose {
 		log.Printf("allowed tokens for input is %d", result)
 	}
@@ -104,14 +104,14 @@ func (p *Prompt) AllowedInputTokens(encoder *tokenizer.Encoder, maxTokensOverrid
 	return result, nil
 }
 
-func (p *Prompt) AllowedSubsequentInputTokens(encoder *tokenizer.Encoder, outputLen, maxTokensOverride int, verbose bool) (int, error) {
+func (p *Prompt) AllowedSubsequentInputTokens(encoder *tokenizer.Encoder, outputLen, tokenLimit, maxTokensOverride int, verbose bool) (int, error) {
 	promptTokens, err := p.CountSubsequentTokens(encoder)
 	if err != nil {
 		return 0, err
 	}
 	// reserve 500 tokens for output if maxTokens is not specified
 	maxTokens := firstNonZeroInt(maxTokensOverride, p.MaxTokens, 500)
-	result := 4096 - (promptTokens + maxTokens + outputLen)
+	result := tokenLimit - (promptTokens + maxTokens + outputLen)
 	if verbose {
 		log.Printf("allowed tokens for subsequent input is %d", result)
 	}
@@ -145,8 +145,8 @@ func splitStringWithTokensLimit(s string, tokensLimit int) ([]string, error) {
 	return parts, nil
 }
 
-func (p *Prompt) CreateMessagesWithSplit(encoder *tokenizer.Encoder, input string, maxTokensOverride int, verbose bool) ([][]gogpt.ChatCompletionMessage, error) {
-	allowedInputTokens, err := p.AllowedInputTokens(encoder, maxTokensOverride, verbose)
+func (p *Prompt) CreateMessagesWithSplit(encoder *tokenizer.Encoder, input string, tokenLimit, maxTokensOverride int, verbose bool) ([][]gogpt.ChatCompletionMessage, error) {
+	allowedInputTokens, err := p.AllowedInputTokens(encoder, tokenLimit, maxTokensOverride, verbose)
 	if err != nil {
 		return nil, err
 	}
