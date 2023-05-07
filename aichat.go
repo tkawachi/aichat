@@ -308,7 +308,7 @@ func main() {
 		} else {
 			messages := prompt.CreateMessages(input)
 			if verbose {
-				log.Printf("messages: %+v", messagesSlice)
+				log.Printf("messages: %+v", messages)
 			}
 			messagesSlice = [][]gogpt.ChatCompletionMessage{messages}
 		}
