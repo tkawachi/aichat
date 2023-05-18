@@ -228,7 +228,7 @@ func main() {
 	var listPrompts = false
 	var nonStreaming = false
 	var split = false
-	var model = gogpt.GPT4
+	var model = ""
 	getopt.FlagLong(&temperature, "temperature", 't', "temperature")
 	getopt.FlagLong(&maxTokens, "max-tokens", 0, "max tokens, 0 to use default")
 	getopt.FlagLong(&verbose, "verbose", 'v', "verbose output")
@@ -249,6 +249,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	config, err := ReadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// if model is not specified, use the default model from the config file
+	if model == "" {
+		if config.Model == "" {
+			model = gogpt.GPT3Dot5Turbo
+		} else {
+			model = config.Model
+		}
+	}
+
 	options := chatOptions{
 		model:        model,
 		temperature:  temperature,
