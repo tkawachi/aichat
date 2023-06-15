@@ -214,6 +214,8 @@ func tokenLimitOfModel(model string) int {
 	switch model {
 	case gogpt.GPT4, gogpt.GPT40314:
 		return 8 * 1024
+	case gogpt.GPT3Dot5Turbo16K, gogpt.GPT3Dot5Turbo16K0613:
+		return 16 * 1024
 	case gogpt.GPT432K, gogpt.GPT432K0314:
 		return 32 * 1024
 	default:
