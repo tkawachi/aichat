@@ -26,6 +26,18 @@
    - Configuration loading in config.go
    - Credential management in credential.go
 
+## Dependency Management Patterns
+- Prefer minimal dependencies
+- Use exact version pinning
+- Regular dependency audits
+- Update strategy:
+  ```mermaid
+  flowchart LR
+      A[Check for updates] --> B[Test locally]
+      B --> C[Update memory bank]
+      C --> D[Commit changes]
+  ```
+
 ## Key Implementation Details
 ```mermaid
 flowchart LR

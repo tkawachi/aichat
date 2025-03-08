@@ -5,6 +5,7 @@
 - Configuration loading (env vars > YAML)
 - OpenAI API integration
 - Streaming response handling
+- Updated dependencies to latest stable versions
 
 ## Pending Implementation
 - Azure OpenAI support

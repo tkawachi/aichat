@@ -20,5 +20,8 @@
 
 ## Dependencies
 - github.com/pborman/getopt/v2
-- github.com/sashabaranov/go-openai
+- github.com/sashabaranov/go-openai v1.38.0
 - github.com/samber/go-gpt-3-encoder
+- github.com/samber/lo v1.49.1
+- github.com/dlclark/regexp2 v1.11.5
+- golang.org/x/text v0.23.0
