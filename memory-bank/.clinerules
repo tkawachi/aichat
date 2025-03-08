@@ -1,0 +1,52 @@
+# Project Intelligence
+
+## Established Patterns
+1. **CLI Architecture**:
+   - Using getopt package for command line parsing (no Cobra dependency)
+   - Command structure:
+     ```mermaid
+     flowchart TD
+         A[aichat] --> B[--list-prompts]
+         A --> C[--temperature]
+         A --> D[--max-tokens]
+         A --> E[--verbose]
+         A --> F[--non-streaming]
+         A --> G[prompt-name]
+     ```
+
+2. **Configuration Management**:
+   - Environment variable first approach (OPENAI_API_KEY)
+   - YAML config fallback (~/.aichat.yaml)
+   - Automatic config file creation with defaults
+   - Config validation on load
+
+3. **Code Organization**:
+   - Main logic in aichat.go
+   - Prompt handling in prompt.go
+   - Configuration loading in config.go
+   - Credential management in credential.go
+
+## Key Implementation Details
+```mermaid
+flowchart LR
+    CLI[Command Line Args] --> Parser[getopt parsing]
+    Parser --> Config[Load Config]
+    Config --> Execution[Execute Command]
+    Execution --> OpenAI[OpenAI API Call]
+```
+
+## Core Principles
+- Minimal dependencies (getopt, openai)
+- Streaming response prioritization
+- Token counting for cost estimation
+- Strict separation between:
+  - CLI layer (aichat.go)
+  - Config layer (config.go)
+  - API layer (credential.go)
+  - Business logic (prompt.go)
+
+## Anti-Patterns to Avoid
+❌ Complex dependency chains
+❌ Mixed concern implementations
+❌ Blocking API responses
+❌ Unbounded API usage

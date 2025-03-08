@@ -1,21 +1,21 @@
 # Active Context
 
 ## Current work focus
-- Setting up the basic command-line interface using Cobra.
-- Implementing configuration management with Viper and dotenv.
-- Defining the core command structure and flags.
+- Implementing minimal CLI using getopt package
+- Direct configuration handling without external libraries
+- Optimizing command execution flow
 
 ## Recent changes
-- Initialized memory bank files.
-- Defined project scope and requirements in projectbrief.md.
-- Outlined product context, system patterns, and tech context.
+- Migrated from Cobra to getopt for CLI parsing
+- Simplified configuration management
+- Established core command patterns in .clinerules
 
 ## Next steps
-- Implement the main command structure using Cobra.
-- Set up configuration loading from environment variables and potentially a config file.
-- Define basic commands (e.g., `aichat generate`, `aichat translate`).
+- Expand prompt-based command handling
+- Add input validation for API parameters
+- Implement config file support (YAML format)
 
 ## Active decisions and considerations
-- Decide on the initial set of commands and functionalities to implement.
-- Choose the first LLM API to integrate with (likely OpenAI).
-- Determine the configuration file format (if needed).
+- Maintaining minimal dependency footprint
+- Balancing flexibility with simplicity
+- Ensuring backward compatibility with existing prompts

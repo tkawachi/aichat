@@ -1,9 +1,9 @@
 # System Patterns
 
 ## System Architecture
-- **Command Processing:** The tool will use a command parser to interpret user commands and arguments.
-- **LLM API Interaction:**  A modular API client will handle communication with different LLM services.
-- **Configuration Management:** A configuration module will manage API keys and user settings, likely using environment variables or a configuration file.
+- **Command Processing:** getopt-based parser for minimal dependency CLI handling
+- **LLM API Interaction:** Direct OpenAI API integration with modular design for future expansion
+- **Configuration Management:** Environment variable first approach with fallback to YAML config
 - **Error Handling:** Centralized error handling to manage API errors, invalid commands, and other issues.
 
 ## Key technical decisions
@@ -12,9 +12,9 @@
 - **Configuration Security:**  Storing API keys as environment variables and using secure configuration practices.
 
 ## Design patterns in use
-- **Strategy Pattern:** For different LLM functionalities (text generation, translation, etc.).
-- **Factory Pattern:** To create instances of API clients for different LLM providers.
-- **Singleton Pattern:** For configuration management to ensure a single source of truth.
+- **Pipeline Pattern:** For processing input through tokenization and API interaction
+- **Builder Pattern:** For constructing complex API request objects
+- **Explicit Error Handling:** Using Go's native error wrapping and checking
 
 ## Component relationships
 - **Command Parser** -> **LLM API Client** -> **LLM API**
