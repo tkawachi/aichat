@@ -35,7 +35,11 @@ func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest,
 	if err != nil {
 		return err
 	}
-	defer stream.Close()
+	defer func() {
+		if closeErr := stream.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 	for {
 		response, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
