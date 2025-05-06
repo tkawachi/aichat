@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pborman/getopt/v2"
 	tokenizer "github.com/samber/go-gpt-3-encoder"
@@ -21,15 +22,20 @@ type chatOptions struct {
 	maxTokens    int
 	nonStreaming bool
 	verbose      bool
+	saveHistory  bool
+	loadHistory  string
+	listHistory  bool
+	deleteHistory string
 }
 
 type AIChat struct {
-	client  *gogpt.Client
-	encoder *tokenizer.Encoder
-	options chatOptions
+	client       *gogpt.Client
+	encoder      *tokenizer.Encoder
+	options      chatOptions
+	conversation *Conversation
 }
 
-// stramCompletion print out the chat completion in streaming mode.
+// streamCompletion print out the chat completion in streaming mode.
 func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest, out io.Writer, verbose bool) error {
 	stream, err := client.CreateChatCompletionStream(context.Background(), request)
 	if err != nil {
@@ -43,7 +49,7 @@ func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest,
 	for {
 		response, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
-			fmt.Println()
+			fmt.Fprintln(out) // Use Fprintln to ensure newline is written to all writers
 			break
 		}
 		if err != nil {
@@ -77,19 +83,107 @@ func nonStreamCompletion(client *gogpt.Client, request gogpt.ChatCompletionReque
 }
 
 func (aiChat *AIChat) stdChatLoop() error {
-	messages := []gogpt.ChatCompletionMessage{}
+	var messages []gogpt.ChatCompletionMessage
+	
+	if aiChat.conversation == nil {
+		aiChat.conversation = NewConversation("New Conversation", aiChat.options.model)
+	} else {
+		// Use messages from loaded conversation
+		messages = aiChat.conversation.ToGPTMessages()
+	}
+	
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("user: ")
 	for scanner.Scan() {
 		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
 			fmt.Println("Empty input. Exiting...")
+			
+			if aiChat.options.saveHistory && len(aiChat.conversation.Messages) > 0 {
+				if err := SaveConversation(aiChat.conversation); err != nil {
+					log.Printf("Failed to save conversation: %v", err)
+				} else if aiChat.options.verbose {
+					log.Printf("Conversation saved with ID: %s", aiChat.conversation.ID)
+				}
+			}
+			
 			return nil
 		}
+		
+		if strings.HasPrefix(input, "/") {
+			cmd := strings.TrimSpace(strings.TrimPrefix(input, "/"))
+			switch {
+			case cmd == "save":
+				if len(aiChat.conversation.Messages) == 0 {
+					fmt.Println("No messages to save.")
+				} else {
+					if err := SaveConversation(aiChat.conversation); err != nil {
+						fmt.Printf("Error saving conversation: %v\n", err)
+					} else {
+						fmt.Printf("Conversation saved with ID: %s\n", aiChat.conversation.ID)
+					}
+				}
+				fmt.Print("user: ")
+				continue
+				
+			case cmd == "list":
+				conversations, err := ListConversations()
+				if err != nil {
+					fmt.Printf("Error listing conversations: %v\n", err)
+				} else if len(conversations) == 0 {
+					fmt.Println("No saved conversations.")
+				} else {
+					fmt.Println("Saved conversations:")
+					for _, conv := range conversations {
+						fmt.Printf("- %s: %s (%s)\n", conv.ID, conv.Title, conv.UpdatedAt.Format(time.RFC3339))
+					}
+				}
+				fmt.Print("user: ")
+				continue
+				
+			case strings.HasPrefix(cmd, "load "):
+				id := strings.TrimSpace(strings.TrimPrefix(cmd, "load "))
+				conv, err := LoadConversation(id)
+				if err != nil {
+					fmt.Printf("Error loading conversation: %v\n", err)
+				} else {
+					aiChat.conversation = conv
+					messages = conv.ToGPTMessages()
+					fmt.Printf("Loaded conversation: %s\n", conv.Title)
+				}
+				fmt.Print("user: ")
+				continue
+				
+			case strings.HasPrefix(cmd, "delete "):
+				id := strings.TrimSpace(strings.TrimPrefix(cmd, "delete "))
+				if err := DeleteConversation(id); err != nil {
+					fmt.Printf("Error deleting conversation: %v\n", err)
+				} else {
+					fmt.Println("Conversation deleted.")
+				}
+				fmt.Print("user: ")
+				continue
+				
+			case cmd == "help":
+				fmt.Println("Available commands:")
+				fmt.Println("  /save              - Save the current conversation")
+				fmt.Println("  /list              - List all saved conversations")
+				fmt.Println("  /load <id>         - Load a conversation by ID")
+				fmt.Println("  /delete <id>       - Delete a conversation by ID")
+				fmt.Println("  /help              - Show this help message")
+				fmt.Print("user: ")
+				continue
+			}
+		}
+		
+		// Add user message to conversation
+		aiChat.conversation.AddMessage(gogpt.ChatMessageRoleUser, input)
+		
 		messages = append(messages, gogpt.ChatCompletionMessage{
 			Role:    gogpt.ChatMessageRoleUser,
 			Content: input,
 		})
+		
 		fmt.Print("assistant: ")
 		request := gogpt.ChatCompletionRequest{
 			Model:       aiChat.options.model,
@@ -97,17 +191,56 @@ func (aiChat *AIChat) stdChatLoop() error {
 			Temperature: aiChat.options.temperature,
 			MaxTokens:   aiChat.options.maxTokens,
 		}
+		
+		var assistantResponse string
 		var err error
+		
 		if aiChat.options.nonStreaming {
-			err = nonStreamCompletion(aiChat.client, request, os.Stdout)
+			response, err := aiChat.client.CreateChatCompletion(context.Background(), request)
+			if err != nil {
+				return err
+			}
+			if len(response.Choices) == 0 {
+				return fmt.Errorf("no choices returned")
+			}
+			assistantResponse = response.Choices[0].Message.Content
+			fmt.Println(assistantResponse)
 		} else {
-			err = streamCompletion(aiChat.client, request, os.Stdout, aiChat.options.verbose)
+			var responseBuilder strings.Builder
+			
+			writer := io.MultiWriter(os.Stdout, &responseBuilder)
+			
+			err = streamCompletion(aiChat.client, request, writer, aiChat.options.verbose)
+			if err != nil {
+				return err
+			}
+			
+			assistantResponse = responseBuilder.String()
 		}
-		if err != nil {
-			return err
+		
+		// Add assistant response to conversation
+		aiChat.conversation.AddMessage(gogpt.ChatMessageRoleAssistant, assistantResponse)
+		
+		messages = append(messages, gogpt.ChatCompletionMessage{
+			Role:    gogpt.ChatMessageRoleAssistant,
+			Content: assistantResponse,
+		})
+		
+		if aiChat.conversation.Title == "New Conversation" && len(aiChat.conversation.Messages) == 2 {
+			aiChat.conversation.Title = GetConversationTitle(messages)
 		}
+		
 		fmt.Print("user: ")
 	}
+	
+	if aiChat.options.saveHistory && len(aiChat.conversation.Messages) > 0 {
+		if err := SaveConversation(aiChat.conversation); err != nil {
+			log.Printf("Failed to save conversation: %v", err)
+		} else if aiChat.options.verbose {
+			log.Printf("Conversation saved with ID: %s", aiChat.conversation.ID)
+		}
+	}
+	
 	return scanner.Err()
 }
 
@@ -235,6 +368,11 @@ func main() {
 	var nonStreaming = false
 	var split = false
 	var model = ""
+	var saveHistory = false
+	var loadHistory = ""
+	var listHistory = false
+	var deleteHistory = ""
+	
 	getopt.FlagLong(&temperature, "temperature", 't', "temperature")
 	getopt.FlagLong(&maxTokens, "max-tokens", 0, "max tokens, 0 to use default")
 	getopt.FlagLong(&verbose, "verbose", 'v', "verbose output")
@@ -242,12 +380,40 @@ func main() {
 	getopt.FlagLong(&nonStreaming, "non-streaming", 0, "non streaming mode")
 	getopt.FlagLong(&split, "split", 0, "split input")
 	getopt.FlagLong(&model, "model", 'm', "model")
+	getopt.FlagLong(&saveHistory, "save", 0, "save conversation history")
+	getopt.FlagLong(&loadHistory, "load", 0, "load conversation history by ID")
+	getopt.FlagLong(&listHistory, "list-history", 0, "list saved conversations")
+	getopt.FlagLong(&deleteHistory, "delete", 0, "delete conversation history by ID")
 	getopt.Parse()
 
 	if listPrompts {
 		if err := ListPrompts(); err != nil {
 			log.Fatal(err)
 		}
+		return
+	}
+	
+	if listHistory {
+		conversations, err := ListConversations()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(conversations) == 0 {
+			fmt.Println("No saved conversations.")
+		} else {
+			fmt.Println("Saved conversations:")
+			for _, conv := range conversations {
+				fmt.Printf("- %s: %s (%s)\n", conv.ID, conv.Title, conv.UpdatedAt.Format(time.RFC3339))
+			}
+		}
+		return
+	}
+	
+	if deleteHistory != "" {
+		if err := DeleteConversation(deleteHistory); err != nil {
+			log.Fatalf("Failed to delete conversation: %v", err)
+		}
+		fmt.Println("Conversation deleted.")
 		return
 	}
 
@@ -276,6 +442,10 @@ func main() {
 		maxTokens:    maxTokens,
 		nonStreaming: nonStreaming,
 		verbose:      verbose,
+		saveHistory:  saveHistory,
+		loadHistory:  loadHistory,
+		listHistory:  listHistory,
+		deleteHistory: deleteHistory,
 	}
 	if verbose {
 		log.Printf("options: %+v", options)
@@ -284,10 +454,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	
 	aiChat := AIChat{
 		client:  gogpt.NewClient(openaiAPIKey),
 		encoder: encoder,
 		options: options,
+	}
+	
+	if loadHistory != "" {
+		conversation, err := LoadConversation(loadHistory)
+		if err != nil {
+			log.Fatalf("Failed to load conversation: %v", err)
+		}
+		aiChat.conversation = conversation
+		fmt.Printf("Loaded conversation: %s\n", conversation.Title)
 	}
 
 	args := getopt.Args()
