@@ -131,10 +131,7 @@ func splitStringWithTokensLimit(s string, tokensLimit int) ([]string, error) {
 		return nil, err
 	}
 	var parts []string
-	for {
-		if len(encoded) == 0 {
-			break
-		}
+	for len(encoded) > 0 {
 		if len(encoded) <= tokensLimit {
 			parts = append(parts, encoder.Decode(encoded))
 			break
@@ -180,7 +177,11 @@ func ReadYamlFromFile(filename string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			err = closeErr
+		}
+	}()
 
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(v); err != nil {
