@@ -357,6 +357,10 @@ func tokenLimitOfModel(model string) int {
 		return 16 * 1024
 	case gogpt.GPT432K, gogpt.GPT432K0314:
 		return 32 * 1024
+	case gogpt.O4Mini, gogpt.O4Mini20250416:
+		return 128 * 1024
+	case gogpt.O3, gogpt.O3Mini, gogpt.O320250416, gogpt.O3Mini20250131:
+		return 8 * 1024
 	default:
 		return 4 * 1024
 	}
@@ -432,7 +436,7 @@ func main() {
 	// if model is not specified, use the default model from the config file
 	if model == "" {
 		if config.Model == "" {
-			model = gogpt.GPT3Dot5Turbo
+			model = gogpt.O4Mini
 		} else {
 			model = config.Model
 		}
