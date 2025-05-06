@@ -37,6 +37,8 @@ type AIChat struct {
 
 // streamCompletion print out the chat completion in streaming mode.
 func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest, out io.Writer, verbose bool) error {
+	applyModelSpecificLimitations(&request, verbose)
+	
 	stream, err := client.CreateChatCompletionStream(context.Background(), request)
 	if err != nil {
 		return err
@@ -73,6 +75,8 @@ func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest,
 
 // stramCompletion print out the chat completion in non-streaming mode.
 func nonStreamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest, out io.Writer) error {
+	applyModelSpecificLimitations(&request, false)
+	
 	response, err := client.CreateChatCompletion(context.Background(), request)
 	if err != nil {
 		return err
@@ -197,11 +201,13 @@ func (aiChat *AIChat) stdChatLoop() error {
 		var assistantResponse string
 		var err error
 		
-		if aiChat.options.nonStreaming {
-			response, err := aiChat.client.CreateChatCompletion(context.Background(), request)
-			if err != nil {
-				return err
-			}
+	if aiChat.options.nonStreaming {
+		applyModelSpecificLimitations(&request, aiChat.options.verbose)
+		
+		response, err := aiChat.client.CreateChatCompletion(context.Background(), request)
+		if err != nil {
+			return err
+		}
 			if len(response.Choices) == 0 {
 				return fmt.Errorf("no choices returned")
 			}
@@ -291,6 +297,9 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 	if aiChat.options.verbose {
 		log.Printf("first request: %+v", firstRequest)
 	}
+	
+	applyModelSpecificLimitations(&firstRequest, aiChat.options.verbose)
+	
 	response, err := aiChat.client.CreateChatCompletion(context.Background(), firstRequest)
 	if err != nil {
 		return fmt.Errorf("create chat completion: %w", err)
@@ -328,11 +337,14 @@ func (aiChat *AIChat) fold(prompt *Prompt, input string) error {
 			Messages:    prompt.CreateSubsequentMessages(output, input),
 			Temperature: temperature,
 		}
-		if aiChat.options.verbose {
-			log.Printf("subsequent request: %+v", request)
-		}
-		response, err := aiChat.client.CreateChatCompletion(context.Background(), request)
-		if err != nil {
+	if aiChat.options.verbose {
+		log.Printf("subsequent request: %+v", request)
+	}
+	
+	applyModelSpecificLimitations(&request, aiChat.options.verbose)
+	
+	response, err := aiChat.client.CreateChatCompletion(context.Background(), request)
+	if err != nil {
 			return fmt.Errorf("create chat completion: %w", err)
 		}
 		if len(response.Choices) == 0 {
@@ -364,6 +376,33 @@ func tokenLimitOfModel(model string) int {
 	default:
 		return 4 * 1024
 	}
+}
+
+func hasBetaLimitations(model string) bool {
+	switch model {
+	case gogpt.O4Mini, gogpt.O4Mini20250416:
+		return true
+	default:
+		return false
+	}
+}
+
+func applyModelSpecificLimitations(request *gogpt.ChatCompletionRequest, verbose bool) bool {
+	if !hasBetaLimitations(request.Model) {
+		return false
+	}
+
+	if verbose {
+		log.Printf("Applying beta limitations for model %s", request.Model)
+	}
+
+	request.Temperature = 1
+	request.TopP = 1
+	request.N = 1
+	request.PresencePenalty = 0
+	request.FrequencyPenalty = 0
+
+	return true
 }
 
 func main() {
@@ -545,6 +584,8 @@ func main() {
 				log.Fatalf("total tokens %d exceeds %d", cnt, tokenLimit)
 			}
 
+			applyModelSpecificLimitations(&request, aiChat.options.verbose)
+			
 			if aiChat.options.nonStreaming {
 				err = nonStreamCompletion(aiChat.client, request, os.Stdout)
 			} else {
