@@ -150,7 +150,11 @@ func TestSaveLoadConversation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 	
 	origGetHistoryDir := GetHistoryDir
 	defer func() { GetHistoryDir = origGetHistoryDir }()
@@ -205,7 +209,11 @@ func TestListConversations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 	
 	origGetHistoryDir := GetHistoryDir
 	defer func() { GetHistoryDir = origGetHistoryDir }()
@@ -249,7 +257,11 @@ func TestDeleteConversation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 	
 	origGetHistoryDir := GetHistoryDir
 	defer func() { GetHistoryDir = origGetHistoryDir }()

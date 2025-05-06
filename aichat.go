@@ -49,7 +49,9 @@ func streamCompletion(client *gogpt.Client, request gogpt.ChatCompletionRequest,
 	for {
 		response, err := stream.Recv()
 		if errors.Is(err, io.EOF) {
-			fmt.Fprintln(out) // Use Fprintln to ensure newline is written to all writers
+			if _, err := fmt.Fprintln(out); err != nil {
+				return err
+			}
 			break
 		}
 		if err != nil {
