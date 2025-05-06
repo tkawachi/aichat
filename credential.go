@@ -26,14 +26,14 @@ func ReadOpenAIAPIKey() (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("OpenAI API credentials not found. To use aichat, you need to set up your API key using one of these methods:\n\n" +
+			return "", fmt.Errorf("OpenAI API credentials not found\nTo use aichat, you need to set up your API key using one of these methods:\n\n" +
 				"1. Create a credentials file at: %s with the following content:\n" +
 				"   ```yaml\n" +
 				"   openai_api_key: YOUR_API_KEY\n" +
 				"   ```\n\n" +
 				"2. Or set the OPENAI_API_KEY environment variable:\n" +
 				"   export OPENAI_API_KEY=your_api_key\n\n" +
-				"See README.md for more information.", path)
+				"See README.md for more information", path)
 		}
 		return "", err
 	}
