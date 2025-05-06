@@ -12,7 +12,7 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/samber/go-gpt-3-encoder v0.3.1 h1:YWb9GsGYUgSX/wPtsEHjyNGRQXsQ9vDCg9SU2x9uMeU=
 github.com/samber/go-gpt-3-encoder v0.3.1/go.mod h1:27nvdvk9ZtALyNtgs9JsPCMYja0Eleow/XzgjqwRtLU=
-github.com/samber/lo v1.50.0 h1:jtS8Wd7Gn3Bj+Zk9CXHzFXvgNrZpDfXkNWg1qMJOFI5o=
+github.com/samber/lo v1.50.0 h1:XrG0xOeHs+4FQ8gJR97zDz5uOFMW7OwFWiFVzqopKgY=
 github.com/samber/lo v1.50.0/go.mod h1:7xhQISKQpzP0YvFdLa9ZkDYKiuZiG/EWGQcXQoUmPzs=
 github.com/sashabaranov/go-openai v1.50.0 h1:BZfGDVBBZ+9JJiXVdTGYRdHdJLUBYzYrUkpYhUYRJZQ=
 github.com/sashabaranov/go-openai v1.50.0/go.mod h1:lj5b/K+zjTSFxVLijLSTDZuP7adOgerWeFyZLUhAKRg=
