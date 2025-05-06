@@ -25,6 +25,10 @@ func TestTokenLimitOfModel(t *testing.T) {
 	}{
 		{"gpt-3.5-turbo", 4096},
 		{"gpt-4", 8192},
+		{"o4-mini", 128 * 1024},
+		{"o4-mini-2025-04-16", 128 * 1024},
+		{"o3", 8 * 1024},
+		{"o3-mini", 8 * 1024},
 	}
 	for _, d := range data {
 		tokenLimit := tokenLimitOfModel(d.modelName)
